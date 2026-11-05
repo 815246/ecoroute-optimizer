@@ -36,11 +36,12 @@ def test_graph_service_simulated_caching() -> None:
     assert g4 is not g1
 
 
-def test_graph_service_osm_not_implemented() -> None:
-    """Verify OSMnx method raises NotImplementedError in Phase 2."""
+def test_graph_service_osm_delegation() -> None:
+    """Verify GraphService delegates get_osm to road_agent.load_osm_graph."""
     service = GraphService()
-    with pytest.raises(NotImplementedError, match="Phase 6"):
-        service.get_osm("Ranchi", "Dhanbad")
+    with pytest.raises(ValueError, match="exceeds maximum"):
+        # Ranchi to Delhi exceeds MAX_BBOX_KM
+        service.get_osm("23.3441, 85.3096", "28.6139, 77.2090")
 
 
 def test_vehicle_service_get_defaults() -> None:

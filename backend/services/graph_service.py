@@ -25,6 +25,7 @@ class GraphService:
             self.road_agent = road_agent
         self._simulated_cache: dict[tuple[int, str, int], Any] = {}
         self._demo_cache: Any | None = None
+        self._osm_cache: dict[tuple[str, str], Any] = {}
 
     def get_demo(self) -> Any:
         """Return (or load and cache) the 5-node A-E demo graph."""
@@ -52,7 +53,11 @@ class GraphService:
         """Clear cached graph instances."""
         self._simulated_cache.clear()
         self._demo_cache = None
+        self._osm_cache.clear()
 
     def get_osm(self, source: str, destination: str) -> Any:
         """Return (or load from disk cache) an OSMnx graph. (Phase 6)"""
-        raise NotImplementedError("Implemented in Phase 6")
+        key = (source, destination)
+        if key not in self._osm_cache:
+            self._osm_cache[key] = self.road_agent.load_osm_graph(source, destination)
+        return self._osm_cache[key]
