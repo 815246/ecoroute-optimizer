@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from algorithms.candidates import generate_candidates
+
 
 class RouteSearchAgent:
     """Generates a diverse set of candidate routes for downstream scoring."""
@@ -22,7 +24,15 @@ class RouteSearchAgent:
         source: Any,
         destination: Any,
         vehicle: Any,
-        weights: dict[str, float],
-    ) -> list[Any]:
-        """Return a list of CandidateRoute objects. (Phase 4)"""
-        raise NotImplementedError("Implemented in Phase 4")
+        weights: dict[str, float] | None = None,
+        k: int = 5,
+    ) -> list[dict[str, Any]]:
+        """Return a list of diverse, deduplicated candidate routes."""
+        return generate_candidates(
+            graph=graph,
+            source=source,
+            destination=destination,
+            vehicle=vehicle,
+            weights=weights,
+            k=k,
+        )
