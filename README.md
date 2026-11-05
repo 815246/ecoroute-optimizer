@@ -86,7 +86,7 @@ docker compose up --build
 ## Current Status
 
 - **Phase 1: Scaffold & Environment** — Complete ✅
-- **Phase 2: Graph Model, Dijkstra, A\*** — Pending
+- **Phase 2: Graph Model, Dijkstra, A\*** — Complete ✅
 - **Phase 3: Vehicle & Emission Agents** — Pending
 - **Phase 4: Multi-objective Optimization** — Pending
 - **Phase 5: Coordinator, FastAPI & Database** — Pending

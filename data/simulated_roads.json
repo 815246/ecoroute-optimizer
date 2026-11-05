@@ -5,7 +5,7 @@
     "B": {"lat": 23.3700, "lon": 85.3300, "name": "Node B (North Point)"},
     "C": {"lat": 23.3550, "lon": 85.3600, "name": "Node C (Central Ring)"},
     "D": {"lat": 23.3200, "lon": 85.3500, "name": "Node D (South Junction)"},
-    "E": {"lat": 23.3300, "lon": 85.3800, "name": "Node E (East Terminal)"}
+    "E": {"lat": 23.3400, "lon": 85.3700, "name": "Node E (East Terminal)"}
   },
   "edges": [
     {
@@ -36,13 +36,13 @@
       "from": "C", "to": "E", "length_km": 2.9, "speed_kmh": 50,
       "free_flow_time_min": 3.48, "road_type": "primary",
       "traffic_multiplier": 1.0, "is_blocked": false,
-      "geometry": [[23.3550, 85.3600], [23.3300, 85.3800]]
+      "geometry": [[23.3550, 85.3600], [23.3400, 85.3700]]
     },
     {
       "from": "D", "to": "E", "length_km": 4.7, "speed_kmh": 40,
       "free_flow_time_min": 7.05, "road_type": "secondary",
       "traffic_multiplier": 1.0, "is_blocked": false,
-      "geometry": [[23.3200, 85.3500], [23.3300, 85.3800]]
+      "geometry": [[23.3200, 85.3500], [23.3400, 85.3700]]
     },
     {
       "from": "D", "to": "C", "length_km": 3.1, "speed_kmh": 35,
@@ -66,13 +66,13 @@
       "from": "E", "to": "C", "length_km": 2.9, "speed_kmh": 50,
       "free_flow_time_min": 3.48, "road_type": "primary",
       "traffic_multiplier": 1.0, "is_blocked": false,
-      "geometry": [[23.3300, 85.3800], [23.3550, 85.3600]]
+      "geometry": [[23.3400, 85.3700], [23.3550, 85.3600]]
     },
     {
       "from": "E", "to": "D", "length_km": 4.7, "speed_kmh": 40,
       "free_flow_time_min": 7.05, "road_type": "secondary",
       "traffic_multiplier": 1.0, "is_blocked": false,
-      "geometry": [[23.3300, 85.3800], [23.3200, 85.3500]]
+      "geometry": [[23.3400, 85.3700], [23.3200, 85.3500]]
     }
   ]
 }
