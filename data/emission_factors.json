@@ -1,0 +1,27 @@
+{
+  "_comment": "Emission factors for EcoRoute Optimizer. Each entry carries value, unit, source, year, and boundary. Factors marked VERIFY must be confirmed before publication.",
+  "petrol": {
+    "value": 2.31,
+    "unit": "kg_CO2_per_litre",
+    "source": "IPCC 2006 Guidelines for National Greenhouse Gas Inventories, Vol. 2 Ch. 3, Table 3.2.2; consistent with BEE India fuel emission factors",
+    "year": 2006,
+    "boundary": "tailpipe",
+    "notes": "Direct combustion emissions only. Does not include upstream (well-to-tank) refining or transport emissions."
+  },
+  "diesel": {
+    "value": 2.68,
+    "unit": "kg_CO2_per_litre",
+    "source": "IPCC 2006 Guidelines for National Greenhouse Gas Inventories, Vol. 2 Ch. 3, Table 3.2.2; consistent with BEE India fuel emission factors",
+    "year": 2006,
+    "boundary": "tailpipe",
+    "notes": "Direct combustion emissions only. Does not include upstream (well-to-tank) refining or transport emissions."
+  },
+  "india_grid_electricity": {
+    "value": 0.716,
+    "unit": "kg_CO2_per_kwh",
+    "source": "VERIFY: CEA CO2 Baseline Database for the Indian Power Sector — confirm version and year before publication. Provisional figure from CEA 2022-23 report.",
+    "year": 2023,
+    "boundary": "grid-average",
+    "notes": "National grid-average generation emission factor for India. Varies regionally and diurnally. NOT comparable to tailpipe figures without explicit accounting boundary disclosure."
+  }
+}

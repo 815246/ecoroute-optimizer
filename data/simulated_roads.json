@@ -1,0 +1,78 @@
+{
+  "_comment": "Demo A-E road network with synthetic coordinates and realistic edge attributes.",
+  "nodes": {
+    "A": {"lat": 23.3441, "lon": 85.3096, "name": "Node A (West Hub)"},
+    "B": {"lat": 23.3700, "lon": 85.3300, "name": "Node B (North Point)"},
+    "C": {"lat": 23.3550, "lon": 85.3600, "name": "Node C (Central Ring)"},
+    "D": {"lat": 23.3200, "lon": 85.3500, "name": "Node D (South Junction)"},
+    "E": {"lat": 23.3300, "lon": 85.3800, "name": "Node E (East Terminal)"}
+  },
+  "edges": [
+    {
+      "from": "A", "to": "B", "length_km": 4.2, "speed_kmh": 50,
+      "free_flow_time_min": 5.04, "road_type": "primary",
+      "traffic_multiplier": 1.0, "is_blocked": false,
+      "geometry": [[23.3441, 85.3096], [23.3700, 85.3300]]
+    },
+    {
+      "from": "A", "to": "D", "length_km": 3.5, "speed_kmh": 40,
+      "free_flow_time_min": 5.25, "road_type": "secondary",
+      "traffic_multiplier": 1.0, "is_blocked": false,
+      "geometry": [[23.3441, 85.3096], [23.3200, 85.3500]]
+    },
+    {
+      "from": "B", "to": "C", "length_km": 3.8, "speed_kmh": 60,
+      "free_flow_time_min": 3.80, "road_type": "primary",
+      "traffic_multiplier": 1.0, "is_blocked": false,
+      "geometry": [[23.3700, 85.3300], [23.3550, 85.3600]]
+    },
+    {
+      "from": "B", "to": "D", "length_km": 5.1, "speed_kmh": 30,
+      "free_flow_time_min": 10.20, "road_type": "residential",
+      "traffic_multiplier": 1.0, "is_blocked": false,
+      "geometry": [[23.3700, 85.3300], [23.3200, 85.3500]]
+    },
+    {
+      "from": "C", "to": "E", "length_km": 2.9, "speed_kmh": 50,
+      "free_flow_time_min": 3.48, "road_type": "primary",
+      "traffic_multiplier": 1.0, "is_blocked": false,
+      "geometry": [[23.3550, 85.3600], [23.3300, 85.3800]]
+    },
+    {
+      "from": "D", "to": "E", "length_km": 4.7, "speed_kmh": 40,
+      "free_flow_time_min": 7.05, "road_type": "secondary",
+      "traffic_multiplier": 1.0, "is_blocked": false,
+      "geometry": [[23.3200, 85.3500], [23.3300, 85.3800]]
+    },
+    {
+      "from": "D", "to": "C", "length_km": 3.1, "speed_kmh": 35,
+      "free_flow_time_min": 5.31, "road_type": "secondary",
+      "traffic_multiplier": 1.0, "is_blocked": false,
+      "geometry": [[23.3200, 85.3500], [23.3550, 85.3600]]
+    },
+    {
+      "from": "B", "to": "A", "length_km": 4.2, "speed_kmh": 50,
+      "free_flow_time_min": 5.04, "road_type": "primary",
+      "traffic_multiplier": 1.0, "is_blocked": false,
+      "geometry": [[23.3700, 85.3300], [23.3441, 85.3096]]
+    },
+    {
+      "from": "C", "to": "B", "length_km": 3.8, "speed_kmh": 60,
+      "free_flow_time_min": 3.80, "road_type": "primary",
+      "traffic_multiplier": 1.0, "is_blocked": false,
+      "geometry": [[23.3550, 85.3600], [23.3700, 85.3300]]
+    },
+    {
+      "from": "E", "to": "C", "length_km": 2.9, "speed_kmh": 50,
+      "free_flow_time_min": 3.48, "road_type": "primary",
+      "traffic_multiplier": 1.0, "is_blocked": false,
+      "geometry": [[23.3300, 85.3800], [23.3550, 85.3600]]
+    },
+    {
+      "from": "E", "to": "D", "length_km": 4.7, "speed_kmh": 40,
+      "free_flow_time_min": 7.05, "road_type": "secondary",
+      "traffic_multiplier": 1.0, "is_blocked": false,
+      "geometry": [[23.3300, 85.3800], [23.3200, 85.3500]]
+    }
+  ]
+}

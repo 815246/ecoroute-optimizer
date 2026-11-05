@@ -1,0 +1,2 @@
+# EcoRoute Optimizer — root requirements proxy
+-r backend/requirements.txt

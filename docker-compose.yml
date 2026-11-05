@@ -1,0 +1,63 @@
+services:
+  # ── PostgreSQL Database ─────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ecoroute}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-ecoroute}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ecoroute}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Backend API ─────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ecoroute}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-ecoroute}
+      DEFAULT_DATA_MODE: ${DEFAULT_DATA_MODE:-simulated}
+      REPLAN_THRESHOLD: ${REPLAN_THRESHOLD:-0.05}
+      EV_RESERVE: ${EV_RESERVE:-0.10}
+      K_ALTERNATIVES: ${K_ALTERNATIVES:-5}
+      MAX_BBOX_KM: ${MAX_BBOX_KM:-50.0}
+      CACHE_DIR: /app/cache
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ORIGINS: '["http://localhost:5173","http://localhost:3000","http://frontend"]'
+      TRAFFIC_SEED: ${TRAFFIC_SEED:-42}
+    volumes:
+      - ./cache:/app/cache
+      - ./data:/app/../data
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Frontend Placeholder (Phase 9 implements React + Vite app) ──────────────
+  frontend:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    volumes:
+      - ./frontend/nginx-placeholder.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
