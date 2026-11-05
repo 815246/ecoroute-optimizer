@@ -33,11 +33,11 @@ run:
 
 ## Run full reproducible benchmark suite (Phase 8)
 bench:
-	PYTHONPATH=backend $(PYTHON) -m experiments.run_benchmarks --seed 42
+	PYTHONPATH=.:backend $(PYTHON) -m experiments.run_benchmarks --seed 42
 
 ## Quick benchmark for CI
 bench-quick:
-	PYTHONPATH=backend $(PYTHON) -m experiments.run_benchmarks --seed 42 --quick
+	PYTHONPATH=.:backend $(PYTHON) -m experiments.run_benchmarks --seed 42 --quick
 
 ## Docker Compose startup
 docker-up:
