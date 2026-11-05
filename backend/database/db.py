@@ -2,7 +2,7 @@
 Database engine and session factory.
 
 Uses DATABASE_URL from config. SQLite for dev/tests, PostgreSQL in production.
-Phase 5 implements Alembic migrations and table creation.
+Phase 5 implements table creation and session dependencies.
 """
 
 from __future__ import annotations
@@ -24,6 +24,14 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
+
+
+def init_db() -> None:
+    """Create all database tables."""
+    # Ensure all models are imported so metadata includes them
+    import database.models  # noqa: F401
+
+    Base.metadata.create_all(bind=engine)
 
 
 def get_db() -> Generator[Session, None, None]:

@@ -20,6 +20,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from api.analytics import router as analytics_router
+from api.history import router as history_router
+from api.routes import router as routes_router
+from api.simulation import router as simulation_router
+from api.vehicles import router as vehicles_router
 from config import settings
 
 # ── Structured logging ────────────────────────────────────────────────────────
@@ -40,6 +45,9 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
     """Startup and shutdown lifecycle events."""
     logger.info("EcoRoute Optimizer starting up (version %s)", settings.APP_VERSION)
     settings.get_cache_dir()
+    from database.db import init_db
+
+    init_db()
     yield
     logger.info("EcoRoute Optimizer shutting down")
 
@@ -165,3 +173,12 @@ async def health_check() -> dict[str, Any]:
         "data_mode_default": settings.DEFAULT_DATA_MODE,
         "traffic_label": "Simulated traffic, not live",
     }
+
+
+# ── Mount API Routers ─────────────────────────────────────────────────────────
+
+app.include_router(routes_router, prefix=settings.API_PREFIX)
+app.include_router(vehicles_router, prefix=settings.API_PREFIX)
+app.include_router(history_router, prefix=settings.API_PREFIX)
+app.include_router(analytics_router, prefix=settings.API_PREFIX)
+app.include_router(simulation_router, prefix=settings.API_PREFIX)

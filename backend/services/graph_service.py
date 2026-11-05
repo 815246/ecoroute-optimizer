@@ -7,16 +7,22 @@ Phase 2 (simulated) and Phase 6 (OSM) implement the respective methods.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from agents.road_network_agent import RoadNetworkAgent
+if TYPE_CHECKING:
+    from agents.road_network_agent import RoadNetworkAgent
 
 
 class GraphService:
     """Graph cache and factory."""
 
     def __init__(self, road_agent: RoadNetworkAgent | None = None) -> None:
-        self.road_agent = road_agent or RoadNetworkAgent()
+        if road_agent is None:
+            from agents.road_network_agent import RoadNetworkAgent
+
+            self.road_agent = RoadNetworkAgent()
+        else:
+            self.road_agent = road_agent
         self._simulated_cache: dict[tuple[int, str, int], Any] = {}
         self._demo_cache: Any | None = None
 
