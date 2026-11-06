@@ -24,6 +24,10 @@ export default function App() {
   const [agentTrace, setAgentTrace] = useState([]);
   const [explanation, setExplanation] = useState(null);
   const [tradeoffs, setTradeoffs] = useState([]);
+  const [selectedLocations, setSelectedLocations] = useState({
+    origin: null,
+    destination: null,
+  });
 
   const handlePlan = useCallback(async (params) => {
     setLoading(true);
@@ -41,6 +45,7 @@ export default function App() {
       setTradeoffs(data.tradeoffs ?? []);
     } catch (err) {
       const msg =
+        err.response?.data?.message ??
         err.response?.data?.detail ??
         err.message ??
         "Unknown error – is the backend running?";
@@ -86,7 +91,11 @@ export default function App() {
           <div className="main-content">
             {/* ── sidebar ── */}
             <aside className="sidebar">
-              <RouteForm onSubmit={handlePlan} loading={loading} />
+              <RouteForm
+                onSubmit={handlePlan}
+                loading={loading}
+                onLocationsChange={setSelectedLocations}
+              />
 
               {error && <div className="error-box">⚠ {error}</div>}
 
@@ -110,7 +119,12 @@ export default function App() {
               style={{ display: "flex", flexDirection: "column" }}
             >
               <div style={{ flex: 1, minHeight: 0 }}>
-                <MapView routes={routes} selectedIndex={selectedIndex} />
+                <MapView
+                  routes={routes}
+                  selectedIndex={selectedIndex}
+                  originCoords={selectedLocations.origin}
+                  destinationCoords={selectedLocations.destination}
+                />
               </div>
             </div>
           </div>

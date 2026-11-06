@@ -359,10 +359,23 @@ class RoadNetworkAgent:
         return g
 
     def _geocode_point(self, point: str) -> tuple[float, float]:
-        """Resolve a coordinate string or address into (lat, lon)."""
+        """Resolve a coordinate string, demo node ID, or address into (lat, lon)."""
         import re
 
         clean = point.strip()
+
+        # Known demo node coordinates (Ranchi)
+        demo_coords = {
+            "A": (23.3000, 85.3200),
+            "B": (23.3200, 85.3500),
+            "C": (23.3100, 85.3800),
+            "D": (23.3400, 85.3300),
+            "E": (23.3400, 85.3700),
+            "F": (23.3600, 85.3600),
+        }
+        if clean.upper() in demo_coords:
+            return demo_coords[clean.upper()]
+
         # Direct lat,lon coordinate check
         match = re.match(r"^([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)$", clean)
         if match:
