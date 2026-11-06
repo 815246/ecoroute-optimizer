@@ -126,7 +126,7 @@ class ReplanningAgent:
 
         # 2. Recompute current route metrics under new traffic
         try:
-            d_km, t_min, _ = _path_metrics(graph, path)
+            d_km, t_min, _, _dirs = _path_metrics(graph, path)
             em_dict = self.emission_agent.calculate(d_km, vehicle)
             updated_old = dict(current_route)
             updated_old.update(

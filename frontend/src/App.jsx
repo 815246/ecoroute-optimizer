@@ -4,9 +4,9 @@
  * Features:
  *   - Search places with OpenStreetMap / Photon autocomplete
  *   - Click anywhere on map to drop Start & Destination pins
+ *   - Interactive expandable Turn-by-Turn path directions
+ *   - Directional path arrows and step highlighting on the map
  *   - Real road geometry curves rendering on Leaflet
- *   - No LLM calls; all data from backend REST API.
- *   - Traffic always labeled "Simulated traffic, not live".
  */
 import React, { useState, useCallback } from "react";
 import RouteForm from "./components/RouteForm";
@@ -28,6 +28,15 @@ export default function App() {
   const [agentTrace, setAgentTrace] = useState([]);
   const [explanation, setExplanation] = useState(null);
   const [tradeoffs, setTradeoffs] = useState([]);
+
+  // Human-readable trip location names
+  const [tripNames, setTripNames] = useState({
+    sourceName: "Birsa Munda Airport, Ranchi",
+    destName: "Ranchi Railway Station",
+  });
+
+  // Hovered direction step location on map
+  const [hoveredStepLocation, setHoveredStepLocation] = useState(null);
 
   // Map click & coordinates state
   const [startPoint, setStartPoint] = useState([23.3144, 85.3216]); // Ranchi Airport
@@ -54,6 +63,14 @@ export default function App() {
     setAgentTrace([]);
     setExplanation(null);
     setTradeoffs([]);
+
+    if (params.sourceName && params.destName) {
+      setTripNames({
+        sourceName: params.sourceName,
+        destName: params.destName,
+      });
+    }
+
     try {
       const data = await planRoute(params);
       setRoutes(data.routes ?? []);
@@ -145,8 +162,11 @@ export default function App() {
                   selectedIndex={selectedIndex}
                   startPoint={startPoint}
                   endPoint={endPoint}
+                  startName={tripNames.sourceName}
+                  endName={tripNames.destName}
                   onMapClick={handleMapClick}
                   clickTarget={activeMapTarget}
+                  hoveredStepLocation={hoveredStepLocation}
                 />
               </div>
             </div>
@@ -158,6 +178,9 @@ export default function App() {
               routes={routes}
               selectedIndex={selectedIndex}
               onSelect={setSelectedIndex}
+              sourceName={tripNames.sourceName}
+              destName={tripNames.destName}
+              onHoverStep={setHoveredStepLocation}
             />
           )}
         </>

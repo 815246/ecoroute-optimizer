@@ -1,16 +1,20 @@
 /**
  * RouteForm – collects source, destination, vehicle, preset, departure hour.
- * Supports:
- *   1. Quick demo nodes (A through F in Ranchi)
- *   2. Free location search (Photon / OpenStreetMap autocomplete)
- *   3. Interactive map-click coordinate selection
+ * Always displays clean location names (never raw coordinates/float numbers).
  */
 import React, { useState, useEffect } from "react";
 import { getVehicles, getPresets } from "../services/api";
 import LocationSearchInput from "./LocationSearchInput";
-import { Zap, Search, MapPin } from "lucide-react";
+import { Zap, Search } from "lucide-react";
 
-const DEFAULT_NODES = ["A", "B", "C", "D", "E", "F"];
+const DEFAULT_NODES = [
+  { id: "A", name: "Node A (Doranda)" },
+  { id: "B", name: "Node B (Hinoo)" },
+  { id: "C", name: "Node C (Kadru)" },
+  { id: "D", name: "Node D (Harmu)" },
+  { id: "E", name: "Node E (Bariatu)" },
+  { id: "F", name: "Node F (Morabadi)" },
+];
 
 export default function RouteForm({
   onSubmit,
@@ -21,14 +25,15 @@ export default function RouteForm({
   setActiveMapTarget,
 }) {
   const [inputMode, setInputMode] = useState("search"); // "search" | "nodes"
-  const [source, setSource] = useState("A");
-  const [destination, setDestination] = useState("E");
+  const [sourceNode, setSourceNode] = useState("A");
+  const [destNode, setDestNode] = useState("E");
 
-  // Search mode state
-  const [sourceLabel, setSourceLabel] = useState("Birsa Munda Airport, Ranchi");
-  const [sourceValue, setSourceValue] = useState("23.3144, 85.3216");
-  const [destLabel, setDestLabel] = useState("Ranchi Railway Station");
-  const [destValue, setDestValue] = useState("23.3486, 85.3341");
+  // Search mode names & coordinates
+  const [sourceName, setSourceName] = useState("Birsa Munda Airport, Ranchi");
+  const [sourceCoords, setSourceCoords] = useState("23.3144, 85.3216");
+
+  const [destName, setDestName] = useState("Ranchi Railway Station");
+  const [destCoords, setDestCoords] = useState("23.3486, 85.3341");
 
   const [vehicleId, setVehicleId] = useState("petrol_hatchback");
   const [preset, setPreset] = useState("eco");
@@ -38,25 +43,49 @@ export default function RouteForm({
   const [vehicles, setVehicles] = useState([]);
   const [presets, setPresets] = useState([]);
 
-  // Sync coordinates when user clicks the map
+  // Reverse geocode when clicked on the map so a real location name appears
   useEffect(() => {
-    if (sourceCoord) {
-      const coordStr = `${sourceCoord[0].toFixed(5)}, ${sourceCoord[1].toFixed(5)}`;
-      setSourceValue(coordStr);
-      setSourceLabel(`Map Point (${coordStr})`);
-      setUseOsm(true);
-      setInputMode("search");
-    }
+    if (!sourceCoord) return;
+    const [lat, lon] = sourceCoord;
+    setSourceCoords(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
+    setUseOsm(true);
+    setInputMode("search");
+
+    fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const p = data.features?.[0]?.properties || {};
+        const nameParts = [p.name || p.street, p.district || p.locality, p.city].filter(
+          Boolean
+        );
+        const resolvedName = nameParts.slice(0, 2).join(", ");
+        setSourceName(resolvedName || "Selected Map Location");
+      })
+      .catch(() => {
+        setSourceName("Selected Map Location");
+      });
   }, [sourceCoord]);
 
   useEffect(() => {
-    if (destCoord) {
-      const coordStr = `${destCoord[0].toFixed(5)}, ${destCoord[1].toFixed(5)}`;
-      setDestValue(coordStr);
-      setDestLabel(`Map Point (${coordStr})`);
-      setUseOsm(true);
-      setInputMode("search");
-    }
+    if (!destCoord) return;
+    const [lat, lon] = destCoord;
+    setDestCoords(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
+    setUseOsm(true);
+    setInputMode("search");
+
+    fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const p = data.features?.[0]?.properties || {};
+        const nameParts = [p.name || p.street, p.district || p.locality, p.city].filter(
+          Boolean
+        );
+        const resolvedName = nameParts.slice(0, 2).join(", ");
+        setDestName(resolvedName || "Selected Destination");
+      })
+      .catch(() => {
+        setDestName("Selected Destination");
+      });
   }, [destCoord]);
 
   useEffect(() => {
@@ -75,26 +104,33 @@ export default function RouteForm({
   function handleSubmit(e) {
     e.preventDefault();
 
-    let finalSource = source;
-    let finalDest = destination;
+    let finalSource = sourceNode;
+    let finalDest = destNode;
+    let finalSourceName = `Node ${sourceNode}`;
+    let finalDestName = `Node ${destNode}`;
 
     if (inputMode === "search") {
-      finalSource = sourceValue || sourceLabel;
-      finalDest = destValue || destLabel;
+      finalSource = sourceCoords || sourceName;
+      finalDest = destCoords || destName;
+      finalSourceName = sourceName || "Origin";
+      finalDestName = destName || "Destination";
+
       if (!finalSource || !finalDest) {
-        alert("Please specify both a starting point and destination.");
+        alert("Please enter both a starting location and destination.");
         return;
       }
     }
 
     if (finalSource === finalDest) {
-      alert("Source and destination must differ.");
+      alert("Source and destination must be different locations.");
       return;
     }
 
     onSubmit({
       source: finalSource,
       destination: finalDest,
+      sourceName: finalSourceName,
+      destName: finalDestName,
       vehicle_id: vehicleId,
       preset,
       departure_hour: departureHour,
@@ -106,12 +142,7 @@ export default function RouteForm({
 
   return (
     <form onSubmit={handleSubmit} className="card">
-      <div className="card-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>Route Planner</span>
-        <span style={{ fontSize: "0.68rem", textTransform: "none", color: "var(--slate-400)" }}>
-          Free OSM Search Enabled
-        </span>
-      </div>
+      <div className="card-title">Route Planner</div>
 
       {/* Mode Switcher Tabs */}
       <div
@@ -182,16 +213,11 @@ export default function RouteForm({
               <div style={{ flex: 1 }}>
                 <LocationSearchInput
                   label="From (Origin)"
-                  displayLabel={sourceLabel}
-                  value={sourceValue}
+                  displayValue={sourceName}
                   placeholder="e.g. Birsa Munda Airport, Ranchi"
-                  onChange={(val) => {
-                    setSourceLabel(val);
-                    setSourceValue(val);
-                  }}
-                  onSelectCoordinate={(item) => {
-                    setSourceLabel(item.name);
-                    setSourceValue(item.coordStr);
+                  onSelectLocation={(item) => {
+                    setSourceName(item.name);
+                    setSourceCoords(item.coordStr);
                   }}
                 />
               </div>
@@ -220,16 +246,11 @@ export default function RouteForm({
               <div style={{ flex: 1 }}>
                 <LocationSearchInput
                   label="To (Destination)"
-                  displayLabel={destLabel}
-                  value={destValue}
+                  displayValue={destName}
                   placeholder="e.g. Ranchi Railway Station"
-                  onChange={(val) => {
-                    setDestLabel(val);
-                    setDestValue(val);
-                  }}
-                  onSelectCoordinate={(item) => {
-                    setDestLabel(item.name);
-                    setDestValue(item.coordStr);
+                  onSelectLocation={(item) => {
+                    setDestName(item.name);
+                    setDestCoords(item.coordStr);
                   }}
                 />
               </div>
@@ -258,10 +279,13 @@ export default function RouteForm({
         <div className="field-row">
           <div className="field">
             <label>From Node</label>
-            <select value={source} onChange={(e) => setSource(e.target.value)}>
+            <select
+              value={sourceNode}
+              onChange={(e) => setSourceNode(e.target.value)}
+            >
               {DEFAULT_NODES.map((n) => (
-                <option key={n} value={n}>
-                  Node {n}
+                <option key={n.id} value={n.id}>
+                  {n.name}
                 </option>
               ))}
             </select>
@@ -269,12 +293,12 @@ export default function RouteForm({
           <div className="field">
             <label>To Node</label>
             <select
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
+              value={destNode}
+              onChange={(e) => setDestNode(e.target.value)}
             >
               {DEFAULT_NODES.map((n) => (
-                <option key={n} value={n}>
-                  Node {n}
+                <option key={n.id} value={n.id}>
+                  {n.name}
                 </option>
               ))}
             </select>

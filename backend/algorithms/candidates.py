@@ -16,6 +16,7 @@ Phase 4 implements this module fully.
 from __future__ import annotations
 
 import itertools
+import math
 from typing import Any
 
 import networkx as nx
@@ -23,17 +24,73 @@ import networkx as nx
 from algorithms.astar import astar, heuristic_factory
 from algorithms.dijkstra import NoRouteFound
 
+DEMO_NODE_NAMES = {
+    "A": "Doranda Chowk",
+    "B": "Hinoo Main Road",
+    "C": "Kadru Bypass",
+    "D": "Harmu Road",
+    "E": "Bariatu Hill Road",
+    "F": "Morabadi Avenue",
+}
+
+
+def _calculate_bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate compass bearing in degrees between two coordinates."""
+    r_lat1, r_lon1, r_lat2, r_lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    dlon = r_lon2 - r_lon1
+    y = math.sin(dlon) * math.cos(r_lat2)
+    x = math.cos(r_lat1) * math.sin(r_lat2) - math.sin(r_lat1) * math.cos(r_lat2) * math.cos(dlon)
+    return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
+
+
+def _bearing_to_compass(b: float) -> str:
+    directions = [
+        "North",
+        "Northeast",
+        "East",
+        "Southeast",
+        "South",
+        "Southwest",
+        "West",
+        "Northwest",
+    ]
+    return directions[round(b / 45.0) % 8]
+
+
+def _format_turn(prev_b: float | None, curr_b: float, street: str) -> tuple[str, str]:
+    """Return turn instruction and turn icon type."""
+    direction_str = _bearing_to_compass(curr_b)
+    if prev_b is None:
+        return f"Head {direction_str} on {street}", "depart"
+
+    diff = (curr_b - prev_b + 180.0) % 360.0 - 180.0
+    if -25.0 <= diff <= 25.0:
+        return f"Continue straight {direction_str} on {street}", "straight"
+    if 25.0 < diff <= 65.0:
+        return f"Bear slightly right onto {street}", "slight_right"
+    if 65.0 < diff <= 125.0:
+        return f"Turn right onto {street}", "right"
+    if diff > 125.0:
+        return f"Sharp right onto {street}", "sharp_right"
+    if -65.0 <= diff < -25.0:
+        return f"Bear slightly left onto {street}", "slight_left"
+    if -125.0 <= diff < -65.0:
+        return f"Turn left onto {street}", "left"
+    return f"Sharp left onto {street}", "sharp_left"
+
 
 def _path_metrics(
     graph: Any,
     path: list[Any],
-) -> tuple[float, float, list[list[float]]]:
-    """Calculate distance, travel time, and geometry for a node sequence."""
+) -> tuple[float, float, list[list[float]], list[dict[str, Any]]]:
+    """Calculate distance, travel time, geometry, and turn-by-turn directions."""
     total_dist = 0.0
     total_time = 0.0
     geometry: list[list[float]] = []
+    directions: list[dict[str, Any]] = []
 
     is_multi = hasattr(graph, "is_multigraph") and graph.is_multigraph()
+    prev_bearing: float | None = None
 
     for i in range(len(path) - 1):
         u = path[i]
@@ -62,9 +119,18 @@ def _path_metrics(
         total_dist += dist
         total_time += time_min
 
+        # Coordinates for nodes u and v
+        u_node = graph.nodes[u]
+        v_node = graph.nodes[v]
+        lat_u = float(u_node.get("lat", u_node.get("y", 0.0)))
+        lon_u = float(u_node.get("lon", u_node.get("x", 0.0)))
+        lat_v = float(v_node.get("lat", v_node.get("y", 0.0)))
+        lon_v = float(v_node.get("lon", v_node.get("x", 0.0)))
+        pt_u = [lat_u, lon_u]
+        pt_v = [lat_v, lon_v]
+
         edge_geom = edge_data.get("geometry")
         if edge_geom is not None and hasattr(edge_geom, "coords"):
-            # Shapely LineString from OSMnx (coords are (lon, lat) = (x, y))
             coords_latlon = [[float(c[1]), float(c[0])] for c in edge_geom.coords]
             if not geometry:
                 geometry.extend(coords_latlon)
@@ -76,19 +142,64 @@ def _path_metrics(
             else:
                 geometry.extend(edge_geom[1:])
         else:
-            u_node = graph.nodes[u]
-            v_node = graph.nodes[v]
-            lat_u = u_node.get("lat", u_node.get("y", 0.0))
-            lon_u = u_node.get("lon", u_node.get("x", 0.0))
-            lat_v = v_node.get("lat", v_node.get("y", 0.0))
-            lon_v = v_node.get("lon", v_node.get("x", 0.0))
-            pt_u = [float(lat_u), float(lon_u)]
-            pt_v = [float(lat_v), float(lon_v)]
             if not geometry:
                 geometry.append(pt_u)
             geometry.append(pt_v)
 
-    return round(total_dist, 3), round(total_time, 3), geometry
+        # Determine street name
+        name_val = edge_data.get("name")
+        if isinstance(name_val, list) and name_val:
+            street = str(name_val[0])
+        elif isinstance(name_val, str) and name_val:
+            street = name_val
+        elif str(u) in DEMO_NODE_NAMES and str(v) in DEMO_NODE_NAMES:
+            street = f"{DEMO_NODE_NAMES[str(u)]} ➔ {DEMO_NODE_NAMES[str(v)]}"
+        else:
+            hw = edge_data.get("highway")
+            if isinstance(hw, list) and hw:
+                hw = hw[0]
+            street = f"{str(hw).capitalize()} Road" if hw else f"Connecting Way ({u} → {v})"
+
+        # Calculate bearing & turn direction
+        curr_bearing = _calculate_bearing(lat_u, lon_u, lat_v, lon_v)
+        instruction, turn_type = _format_turn(prev_bearing, curr_bearing, street)
+        prev_bearing = curr_bearing
+
+        directions.append(
+            {
+                "step": i + 1,
+                "instruction": instruction,
+                "street_name": street,
+                "distance_km": round(dist, 2),
+                "time_min": round(time_min, 1),
+                "turn_type": turn_type,
+                "direction": _bearing_to_compass(curr_bearing),
+                "from_node": str(u),
+                "to_node": str(v),
+                "location": pt_u,
+            }
+        )
+
+    # Final arrival step
+    if directions:
+        last_step = directions[-1]
+        dest_label = DEMO_NODE_NAMES.get(str(path[-1]), f"Node {path[-1]}")
+        directions.append(
+            {
+                "step": len(directions) + 1,
+                "instruction": f"Arrive at destination: {dest_label}",
+                "street_name": dest_label,
+                "distance_km": 0.0,
+                "time_min": 0.0,
+                "turn_type": "arrive",
+                "direction": "",
+                "from_node": last_step["to_node"],
+                "to_node": str(path[-1]),
+                "location": geometry[-1] if geometry else [0.0, 0.0],
+            }
+        )
+
+    return round(total_dist, 3), round(total_time, 3), geometry, directions
 
 
 def generate_candidates(
@@ -190,7 +301,7 @@ def generate_candidates(
     candidates: list[dict[str, Any]] = []
     for path_tuple, default_label in unique_paths.items():
         path_list = list(path_tuple)
-        dist_km, time_min, geom = _path_metrics(graph, path_list)
+        dist_km, time_min, geom, directions = _path_metrics(graph, path_list)
         candidates.append(
             {
                 "path": path_list,
@@ -198,6 +309,7 @@ def generate_candidates(
                 "distance_km": dist_km,
                 "travel_time_min": time_min,
                 "route_geometry": geom,
+                "directions": directions,
             }
         )
 

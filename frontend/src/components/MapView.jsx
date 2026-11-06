@@ -1,10 +1,12 @@
 /**
  * MapView – Interactive React-Leaflet map with:
- *   - Real road geometry rendering from backend (route.geometry)
- *   - Click-to-place Start (Green) and Destination (Red) markers
- *   - Demo node circle markers with labels
+ *   - Auto-bounds fitting to selected route path
+ *   - Directional path rendering with Start (Green) & End (Red) pins
+ *   - Turn direction maneuver icons along the route
+ *   - Step highlight on hover from directions list
+ *   - Click-to-place Start & Destination pins
  */
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -13,6 +15,7 @@ import {
   Tooltip,
   Marker,
   Popup,
+  useMap,
   useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
@@ -28,30 +31,54 @@ L.Icon.Default.mergeOptions({
 });
 
 // Custom colored pin icons
-const createPinIcon = (color) =>
+const createPinIcon = (color, labelText) =>
   L.divIcon({
     className: "custom-pin",
     html: `<div style="
       background-color: ${color};
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       border-radius: 50% 50% 50% 0;
       transform: rotate(-45deg);
       border: 2px solid white;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
       display: flex;
       align-items: center;
       justify-content: center;
     ">
-      <div style="width: 8px; height: 8px; background: white; border-radius: 50%;"></div>
+      <span style="transform: rotate(45deg); font-size: 11px; font-weight: 800; color: white;">
+        ${labelText || ""}
+      </span>
     </div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 24],
-    popupAnchor: [0, -24],
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -28],
   });
 
-const startIcon = createPinIcon("#059669"); // Emerald Green
-const endIcon = createPinIcon("#dc2626"); // Red
+const startIcon = createPinIcon("#059669", "A"); // Green Departure
+const endIcon = createPinIcon("#dc2626", "B"); // Red Arrival
+
+// Turn direction arrow icon
+const createTurnIcon = (symbol) =>
+  L.divIcon({
+    className: "turn-pin",
+    html: `<div style="
+      background: white;
+      color: #047857;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1.5px solid #059669;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+    ">${symbol}</div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
 
 // Known demo nodes in Ranchi
 const NODE_COORDS = {
@@ -64,7 +91,7 @@ const NODE_COORDS = {
 };
 
 const ROUTE_COLORS = [
-  "#059669", // emerald
+  "#059669", // emerald (recommended)
   "#0284c7", // sky
   "#d97706", // amber
   "#7c3aed", // violet
@@ -83,33 +110,59 @@ function MapClickHandler({ onMapClick }) {
   return null;
 }
 
+// Automatically fit map view to the selected route path
+function RouteBoundsFitter({ activePolyline }) {
+  const map = useMap();
+  useEffect(() => {
+    if (activePolyline && activePolyline.length > 1) {
+      try {
+        const bounds = L.latLngBounds(activePolyline);
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      } catch (e) {
+        // Ignore boundary calculation errors
+      }
+    }
+  }, [activePolyline, map]);
+  return null;
+}
+
 export default function MapView({
   routes,
   selectedIndex,
   startPoint,
   endPoint,
+  startName,
+  endName,
   onMapClick,
-  clickTarget = "start", // "start" or "end"
+  clickTarget = "start",
+  hoveredStepLocation,
 }) {
   const center = [23.34, 85.35];
 
   // Extract all route coordinates (prefers real road geometry if available)
   const routePolylines = useMemo(() => {
     return (routes ?? []).map((route) => {
-      if (route.geometry && Array.isArray(route.geometry) && route.geometry.length > 1) {
+      if (
+        route.route_geometry &&
+        Array.isArray(route.route_geometry) &&
+        route.route_geometry.length > 1
+      ) {
+        return route.route_geometry;
+      }
+      if (
+        route.geometry &&
+        Array.isArray(route.geometry) &&
+        route.geometry.length > 1
+      ) {
         return route.geometry;
       }
-      return (route.path ?? [])
-        .map((n) => NODE_COORDS[n])
-        .filter(Boolean);
+      return (route.path ?? []).map((n) => NODE_COORDS[n]).filter(Boolean);
     });
   }, [routes]);
 
-  const allNodes = useMemo(() => {
-    const nodes = new Set();
-    (routes ?? []).forEach((r) => (r.path ?? []).forEach((n) => nodes.add(n)));
-    return [...nodes];
-  }, [routes]);
+  const selectedPolyline = routePolylines[selectedIndex] || [];
+  const selectedRoute = routes[selectedIndex] || {};
+  const directions = selectedRoute.directions || [];
 
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
@@ -142,7 +195,7 @@ export default function MapView({
             borderRadius: "4px",
           }}
         >
-          {clickTarget === "start" ? "📍 Starting Point" : "🏁 Destination"}
+          {clickTarget === "start" ? "📍 Start Pin (A)" : "🏁 Destination (B)"}
         </span>
       </div>
 
@@ -158,15 +211,19 @@ export default function MapView({
         />
 
         <MapClickHandler onMapClick={onMapClick} />
+        <RouteBoundsFitter activePolyline={selectedPolyline} />
 
         {/* Selected Start Point Marker */}
         {startPoint && (
           <Marker position={startPoint} icon={startIcon}>
             <Popup>
-              <strong>Start Point</strong>
+              <strong>Start Point:</strong>
               <br />
-              {startPoint[0].toFixed(5)}, {startPoint[1].toFixed(5)}
+              {startName || "Origin Location"}
             </Popup>
+            <Tooltip permanent direction="top" offset={[0, -26]}>
+              {startName ? startName.split(",")[0] : "Start (A)"}
+            </Tooltip>
           </Marker>
         )}
 
@@ -174,17 +231,37 @@ export default function MapView({
         {endPoint && (
           <Marker position={endPoint} icon={endIcon}>
             <Popup>
-              <strong>Destination</strong>
+              <strong>Destination:</strong>
               <br />
-              {endPoint[0].toFixed(5)}, {endPoint[1].toFixed(5)}
+              {endName || "Destination Location"}
             </Popup>
+            <Tooltip permanent direction="top" offset={[0, -26]}>
+              {endName ? endName.split(",")[0] : "Destination (B)"}
+            </Tooltip>
           </Marker>
         )}
 
-        {/* Draw all route polylines */}
+        {/* Hovered Step Highlight on Map */}
+        {hoveredStepLocation && (
+          <CircleMarker
+            center={hoveredStepLocation}
+            radius={10}
+            pathOptions={{
+              color: "#f59e0b",
+              fillColor: "#fbbf24",
+              fillOpacity: 0.9,
+              weight: 3,
+            }}
+          >
+            <Tooltip permanent direction="top">
+              Step Location
+            </Tooltip>
+          </CircleMarker>
+        )}
+
+        {/* Draw Unselected Routes in background */}
         {routePolylines.map((latlngs, i) => {
-          if (latlngs.length < 2) return null;
-          const isSelected = i === selectedIndex;
+          if (latlngs.length < 2 || i === selectedIndex) return null;
           const route = routes[i] || {};
           return (
             <Polyline
@@ -192,42 +269,75 @@ export default function MapView({
               positions={latlngs}
               pathOptions={{
                 color: ROUTE_COLORS[i % ROUTE_COLORS.length],
-                weight: isSelected ? 5 : 2.5,
-                opacity: isSelected ? 1 : 0.45,
-                dashArray: isSelected ? undefined : "6 4",
+                weight: 3,
+                opacity: 0.35,
+                dashArray: "6 6",
               }}
             >
               <Tooltip sticky>
                 {route.primary_label ?? route.label ?? `Route ${i + 1}`} |{" "}
-                {Number(route.co2_kg ?? route.total_co2_kg ?? 0).toFixed(3)} kg CO₂ ·{" "}
-                {Number(route.travel_time_min ?? route.total_time_min ?? 0).toFixed(1)} min
+                {Number(route.co2_kg ?? 0).toFixed(3)} kg CO₂ ·{" "}
+                {Number(route.travel_time_min ?? 0).toFixed(1)} min
               </Tooltip>
             </Polyline>
           );
         })}
 
-        {/* Node Labels (for simulated/demo graph) */}
-        {allNodes.map((n) => {
-          const pos = NODE_COORDS[n];
-          if (!pos) return null;
-          return (
-            <CircleMarker
-              key={n}
-              center={pos}
-              radius={8}
+        {/* Draw Selected/Recommended Route with High Contrast & Glow */}
+        {selectedPolyline.length > 1 && (
+          <>
+            {/* Outer casing for contrast */}
+            <Polyline
+              positions={selectedPolyline}
               pathOptions={{
-                color: "#1e293b",
-                fillColor: "#f8fafc",
-                fillOpacity: 1,
-                weight: 2,
+                color: "#064e3b",
+                weight: 7,
+                opacity: 0.8,
+              }}
+            />
+            {/* Inner vibrant line */}
+            <Polyline
+              positions={selectedPolyline}
+              pathOptions={{
+                color: "#10b981",
+                weight: 4.5,
+                opacity: 1,
               }}
             >
-              <Tooltip permanent direction="top" offset={[0, -10]}>
-                {n}
+              <Tooltip sticky>
+                <strong>
+                  {selectedRoute.primary_label || "Recommended Route"}
+                </strong>
+                <br />
+                {Number(selectedRoute.co2_kg ?? 0).toFixed(3)} kg CO₂ ·{" "}
+                {Number(selectedRoute.travel_time_min ?? 0).toFixed(1)} min
               </Tooltip>
-            </CircleMarker>
-          );
-        })}
+            </Polyline>
+
+            {/* Turn maneuver step icons along the route */}
+            {directions.slice(0, -1).map((step, sIdx) => {
+              if (!step.location || step.location.length < 2) return null;
+              // Choose symbol based on turn
+              const symbol =
+                step.turn_type === "right"
+                  ? "➔"
+                  : step.turn_type === "left"
+                    ? "⬅"
+                    : "⬆";
+              return (
+                <Marker
+                  key={`step-${sIdx}`}
+                  position={step.location}
+                  icon={createTurnIcon(symbol)}
+                >
+                  <Tooltip direction="right" offset={[10, 0]}>
+                    Step {step.step}: {step.instruction}
+                  </Tooltip>
+                </Marker>
+              );
+            })}
+          </>
+        )}
       </MapContainer>
     </div>
   );
