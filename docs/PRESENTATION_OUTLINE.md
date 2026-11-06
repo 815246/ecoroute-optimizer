@@ -137,3 +137,4 @@ $$h(n) = w_e \cdot \frac{\text{haversine}(n, \text{goal})}{D_{\text{ref}}} \cdot
 ---
 
 *All traffic data simulated · Emissions are estimates · Savings relative to named baseline*
+
