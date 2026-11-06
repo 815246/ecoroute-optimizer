@@ -18,6 +18,8 @@ import logging
 import time
 from typing import Any
 
+logger = logging.getLogger("ecoroute")
+
 from agents.emission_agent import EmissionAgent
 from agents.optimization_agent import OptimizationAgent
 from agents.route_search_agent import RouteSearchAgent
@@ -27,8 +29,6 @@ from config import settings
 from services.explain_service import ExplainService
 from services.graph_service import GraphService
 from services.vehicle_service import VehicleService
-
-logger = logging.getLogger("ecoroute")
 
 
 class Coordinator:
@@ -98,14 +98,15 @@ class Coordinator:
         if data_mode == "real":
             try:
                 graph = self.graph_service.get_osm(str(source), str(destination))
+                lat1, lon1 = self.road_agent._geocode_point(str(source))
+                lat2, lon2 = self.road_agent._geocode_point(str(destination))
                 import osmnx as ox
 
-                lat1, lon1 = self.road_network_agent._geocode_point(str(source))
-                lat2, lon2 = self.road_network_agent._geocode_point(str(destination))
-                source = ox.distance.nearest_nodes(graph, X=lon1, Y=lat1)
-                destination = ox.distance.nearest_nodes(graph, X=lon2, Y=lat2)
-            except Exception as exc:
-                logger.warning("OSM load failed (%s); falling back to demo graph", exc)
+                source = ox.nearest_nodes(graph, X=lon1, Y=lat1)
+                destination = ox.nearest_nodes(graph, X=lon2, Y=lat2)
+            except Exception as osm_err:
+                # If OSM fails or coordinates invalid, fallback safely to demo
+                logger.warning("OSM routing fallback to demo: %s", osm_err)
                 graph = self.graph_service.get_demo()
                 source = "A"
                 destination = "E"
@@ -195,18 +196,6 @@ class Coordinator:
                 "duration_ms": d_opt,
             }
         )
-
-        # Attach geographic coordinates to route paths if graph has node coordinates
-        for route in ranked_routes:
-            coords: list[list[float]] = []
-            for node_id in route.get("path", []):
-                node_data = graph.nodes.get(node_id, {})
-                lat = node_data.get("lat") or node_data.get("y")
-                lon = node_data.get("lon") or node_data.get("x")
-                if lat is not None and lon is not None:
-                    coords.append([round(float(lat), 6), round(float(lon), 6)])
-            if coords:
-                route["coordinates"] = coords
 
         recommended = ranked_routes[0]
         fastest_route = min(ranked_routes, key=lambda r: float(r["travel_time_min"]))

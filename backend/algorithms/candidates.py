@@ -63,7 +63,14 @@ def _path_metrics(
         total_time += time_min
 
         edge_geom = edge_data.get("geometry")
-        if edge_geom:
+        if edge_geom is not None and hasattr(edge_geom, "coords"):
+            # Shapely LineString from OSMnx (coords are (lon, lat) = (x, y))
+            coords_latlon = [[float(c[1]), float(c[0])] for c in edge_geom.coords]
+            if not geometry:
+                geometry.extend(coords_latlon)
+            else:
+                geometry.extend(coords_latlon[1:])
+        elif isinstance(edge_geom, list) and edge_geom:
             if not geometry:
                 geometry.extend(edge_geom)
             else:
@@ -71,8 +78,12 @@ def _path_metrics(
         else:
             u_node = graph.nodes[u]
             v_node = graph.nodes[v]
-            pt_u = [float(u_node.get("lat", 0.0)), float(u_node.get("lon", 0.0))]
-            pt_v = [float(v_node.get("lat", 0.0)), float(v_node.get("lon", 0.0))]
+            lat_u = u_node.get("lat", u_node.get("y", 0.0))
+            lon_u = u_node.get("lon", u_node.get("x", 0.0))
+            lat_v = v_node.get("lat", v_node.get("y", 0.0))
+            lon_v = v_node.get("lon", v_node.get("x", 0.0))
+            pt_u = [float(lat_u), float(lon_u)]
+            pt_v = [float(lat_v), float(lon_v)]
             if not geometry:
                 geometry.append(pt_u)
             geometry.append(pt_v)

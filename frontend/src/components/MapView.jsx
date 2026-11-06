@@ -1,20 +1,59 @@
 /**
- * MapView – React-Leaflet map rendering route paths as coloured polylines.
- * Supports both pre-defined demo nodes (A-F) and real geographic coordinates (lat, lon)
- * returned by Google Places or OSM routing.
+ * MapView – Interactive React-Leaflet map with:
+ *   - Real road geometry rendering from backend (route.geometry)
+ *   - Click-to-place Start (Green) and Destination (Red) markers
+ *   - Demo node circle markers with labels
  */
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
   Polyline,
   CircleMarker,
   Tooltip,
-  useMap,
+  Marker,
+  Popup,
+  useMapEvents,
 } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Coordinates from backend/data/simulated_roads.json
+// Fix Leaflet's default icon path issue in Vite
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+// Custom colored pin icons
+const createPinIcon = (color) =>
+  L.divIcon({
+    className: "custom-pin",
+    html: `<div style="
+      background-color: ${color};
+      width: 24px;
+      height: 24px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 2px solid white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">
+      <div style="width: 8px; height: 8px; background: white; border-radius: 50%;"></div>
+    </div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24],
+  });
+
+const startIcon = createPinIcon("#059669"); // Emerald Green
+const endIcon = createPinIcon("#dc2626"); // Red
+
+// Known demo nodes in Ranchi
 const NODE_COORDS = {
   A: [23.3, 85.32],
   B: [23.32, 85.35],
@@ -25,162 +64,171 @@ const NODE_COORDS = {
 };
 
 const ROUTE_COLORS = [
-  "#059669", // emerald (recommended)
-  "#0284c7", // sky (fastest)
-  "#d97706", // amber (shortest)
+  "#059669", // emerald
+  "#0284c7", // sky
+  "#d97706", // amber
   "#7c3aed", // violet
   "#db2777", // pink
 ];
 
-function getRouteLatLngs(route) {
-  if (route.coordinates && route.coordinates.length > 0) {
-    return route.coordinates;
-  }
-  return (route.path ?? []).map((n) => NODE_COORDS[n]).filter(Boolean);
-}
-
-function AutoFitBounds({ bounds }) {
-  const map = useMap();
-  useEffect(() => {
-    if (bounds && bounds.length > 1) {
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-    }
-  }, [bounds, map]);
+// Click listener hook inside MapContainer
+function MapClickHandler({ onMapClick }) {
+  useMapEvents({
+    click(e) {
+      if (onMapClick) {
+        onMapClick([e.latlng.lat, e.latlng.lng]);
+      }
+    },
+  });
   return null;
 }
 
 export default function MapView({
   routes,
   selectedIndex,
-  originCoords,
-  destinationCoords,
+  startPoint,
+  endPoint,
+  onMapClick,
+  clickTarget = "start", // "start" or "end"
 }) {
-  const defaultCenter = [23.34, 85.35];
+  const center = [23.34, 85.35];
 
-  // Compute all visible coordinates to fit bounds
-  const allCoordinates = useMemo(() => {
-    const pts = [];
-    if (originCoords) pts.push(originCoords);
-    if (destinationCoords) pts.push(destinationCoords);
-    (routes ?? []).forEach((r) => {
-      const coords = getRouteLatLngs(r);
-      coords.forEach((pt) => pts.push(pt));
+  // Extract all route coordinates (prefers real road geometry if available)
+  const routePolylines = useMemo(() => {
+    return (routes ?? []).map((route) => {
+      if (route.geometry && Array.isArray(route.geometry) && route.geometry.length > 1) {
+        return route.geometry;
+      }
+      return (route.path ?? [])
+        .map((n) => NODE_COORDS[n])
+        .filter(Boolean);
     });
-    return pts;
-  }, [routes, originCoords, destinationCoords]);
+  }, [routes]);
 
-  const allDemoNodes = useMemo(() => {
+  const allNodes = useMemo(() => {
     const nodes = new Set();
-    (routes ?? []).forEach((r) =>
-      (r.path ?? []).forEach((n) => {
-        if (NODE_COORDS[n]) nodes.add(n);
-      })
-    );
+    (routes ?? []).forEach((r) => (r.path ?? []).forEach((n) => nodes.add(n)));
     return [...nodes];
   }, [routes]);
 
   return (
-    <MapContainer
-      center={defaultCenter}
-      zoom={13}
-      style={{ height: "100%", minHeight: "420px", width: "100%" }}
-      scrollWheelZoom
-    >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
-      />
-
-      <AutoFitBounds bounds={allCoordinates} />
-
-      {/* Origin Marker */}
-      {originCoords && (
-        <CircleMarker
-          center={originCoords}
-          radius={9}
-          pathOptions={{
-            color: "#059669",
-            fillColor: "#10b981",
-            fillOpacity: 1,
-            weight: 3,
+    <div style={{ position: "relative", height: "100%", width: "100%" }}>
+      {/* Map Header Instructions */}
+      <div
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 10,
+          zIndex: 500,
+          background: "rgba(255, 255, 255, 0.95)",
+          backdropFilter: "blur(4px)",
+          padding: "6px 12px",
+          borderRadius: "8px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          fontSize: "0.75rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          color: "var(--slate-700)",
+        }}
+      >
+        <span>💡 Click map to set:</span>
+        <span
+          style={{
+            fontWeight: 700,
+            color: clickTarget === "start" ? "#059669" : "#dc2626",
+            background: clickTarget === "start" ? "#ecfdf5" : "#fee2e2",
+            padding: "2px 8px",
+            borderRadius: "4px",
           }}
         >
-          <Tooltip permanent direction="top" offset={[0, -10]}>
-            Start
-          </Tooltip>
-        </CircleMarker>
-      )}
+          {clickTarget === "start" ? "📍 Starting Point" : "🏁 Destination"}
+        </span>
+      </div>
 
-      {/* Destination Marker */}
-      {destinationCoords && (
-        <CircleMarker
-          center={destinationCoords}
-          radius={9}
-          pathOptions={{
-            color: "#dc2626",
-            fillColor: "#ef4444",
-            fillOpacity: 1,
-            weight: 3,
-          }}
-        >
-          <Tooltip permanent direction="top" offset={[0, -10]}>
-            Destination
-          </Tooltip>
-        </CircleMarker>
-      )}
+      <MapContainer
+        center={center}
+        zoom={13}
+        style={{ height: "100%", minHeight: "420px", width: "100%" }}
+        scrollWheelZoom
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+        />
 
-      {/* Draw all routes; highlight selected */}
-      {(routes ?? []).map((route, i) => {
-        const latlngs = getRouteLatLngs(route);
-        if (latlngs.length < 2) return null;
-        const isSelected = i === selectedIndex;
-        const color = ROUTE_COLORS[i % ROUTE_COLORS.length];
-        return (
-          <Polyline
-            key={i}
-            positions={latlngs}
-            pathOptions={{
-              color,
-              weight: isSelected ? 6 : 3,
-              opacity: isSelected ? 1 : 0.45,
-              dashArray: isSelected ? undefined : "6 4",
-            }}
-          >
-            <Tooltip sticky>
-              {route.primary_label ?? route.label ?? `Route ${i + 1}`} |{" "}
-              {Number(route.co2_kg ?? route.total_co2_kg ?? 0).toFixed(3)} kg
-              CO₂ ·{" "}
-              {Number(
-                route.travel_time_min ?? route.total_time_min ?? 0
-              ).toFixed(1)}{" "}
-              min
-            </Tooltip>
-          </Polyline>
-        );
-      })}
+        <MapClickHandler onMapClick={onMapClick} />
 
-      {/* Node labels for demo graph */}
-      {allDemoNodes.map((n) => {
-        const pos = NODE_COORDS[n];
-        if (!pos) return null;
-        return (
-          <CircleMarker
-            key={n}
-            center={pos}
-            radius={7}
-            pathOptions={{
-              color: "#334155",
-              fillColor: "#f1f5f9",
-              fillOpacity: 1,
-              weight: 2,
-            }}
-          >
-            <Tooltip permanent direction="top" offset={[0, -8]}>
-              {n}
-            </Tooltip>
-          </CircleMarker>
-        );
-      })}
-    </MapContainer>
+        {/* Selected Start Point Marker */}
+        {startPoint && (
+          <Marker position={startPoint} icon={startIcon}>
+            <Popup>
+              <strong>Start Point</strong>
+              <br />
+              {startPoint[0].toFixed(5)}, {startPoint[1].toFixed(5)}
+            </Popup>
+          </Marker>
+        )}
+
+        {/* Selected Destination Point Marker */}
+        {endPoint && (
+          <Marker position={endPoint} icon={endIcon}>
+            <Popup>
+              <strong>Destination</strong>
+              <br />
+              {endPoint[0].toFixed(5)}, {endPoint[1].toFixed(5)}
+            </Popup>
+          </Marker>
+        )}
+
+        {/* Draw all route polylines */}
+        {routePolylines.map((latlngs, i) => {
+          if (latlngs.length < 2) return null;
+          const isSelected = i === selectedIndex;
+          const route = routes[i] || {};
+          return (
+            <Polyline
+              key={i}
+              positions={latlngs}
+              pathOptions={{
+                color: ROUTE_COLORS[i % ROUTE_COLORS.length],
+                weight: isSelected ? 5 : 2.5,
+                opacity: isSelected ? 1 : 0.45,
+                dashArray: isSelected ? undefined : "6 4",
+              }}
+            >
+              <Tooltip sticky>
+                {route.primary_label ?? route.label ?? `Route ${i + 1}`} |{" "}
+                {Number(route.co2_kg ?? route.total_co2_kg ?? 0).toFixed(3)} kg CO₂ ·{" "}
+                {Number(route.travel_time_min ?? route.total_time_min ?? 0).toFixed(1)} min
+              </Tooltip>
+            </Polyline>
+          );
+        })}
+
+        {/* Node Labels (for simulated/demo graph) */}
+        {allNodes.map((n) => {
+          const pos = NODE_COORDS[n];
+          if (!pos) return null;
+          return (
+            <CircleMarker
+              key={n}
+              center={pos}
+              radius={8}
+              pathOptions={{
+                color: "#1e293b",
+                fillColor: "#f8fafc",
+                fillOpacity: 1,
+                weight: 2,
+              }}
+            >
+              <Tooltip permanent direction="top" offset={[0, -10]}>
+                {n}
+              </Tooltip>
+            </CircleMarker>
+          );
+        })}
+      </MapContainer>
+    </div>
   );
 }
