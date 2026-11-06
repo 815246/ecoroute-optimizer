@@ -18,8 +18,6 @@ import logging
 import time
 from typing import Any
 
-logger = logging.getLogger("ecoroute")
-
 from agents.emission_agent import EmissionAgent
 from agents.optimization_agent import OptimizationAgent
 from agents.route_search_agent import RouteSearchAgent
@@ -29,6 +27,8 @@ from config import settings
 from services.explain_service import ExplainService
 from services.graph_service import GraphService
 from services.vehicle_service import VehicleService
+
+logger = logging.getLogger("ecoroute")
 
 
 class Coordinator:
