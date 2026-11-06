@@ -86,8 +86,9 @@ export async function planRoute(params) {
     const { data } = await client.post("/routes/plan", payload);
     return data;
   } catch (err) {
-    // If running in cloud/Vercel preview without live backend connected, produce demo route set
-    if (!err.response || err.code === "ERR_NETWORK" || err.response.status === 404 || err.response.status === 502) {
+    const status = err.response?.status;
+    // If running in cloud/Vercel preview without live backend connected (e.g. network error, 404, 405 on static POST, 502/503), produce demo route set
+    if (!err.response || err.code === "ERR_NETWORK" || status === 404 || status === 405 || status === 502 || status === 503) {
       return generateDemoRoutes(params);
     }
     throw err;
