@@ -17,7 +17,11 @@ from __future__ import annotations
 from typing import Any
 
 PRESETS: dict[str, dict[str, float]] = {
+    "fastest": {"distance": 0.05, "time": 0.80, "resource": 0.05, "emissions": 0.10},
+    "shortest": {"distance": 0.80, "time": 0.10, "resource": 0.05, "emissions": 0.05},
+    "eco": {"distance": 0.10, "time": 0.15, "resource": 0.25, "emissions": 0.50},
     "balanced": {"distance": 0.25, "time": 0.25, "resource": 0.25, "emissions": 0.25},
+    # Backwards compatibility aliases
     "eco_first": {"distance": 0.10, "time": 0.15, "resource": 0.25, "emissions": 0.50},
     "time_first": {"distance": 0.15, "time": 0.55, "resource": 0.15, "emissions": 0.15},
 }

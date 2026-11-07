@@ -59,10 +59,11 @@ coverage_html/
 # Docker
 postgres_data/
 
-# Frontend (Node / Vite)
+# Frontend (Node / Vite / Vercel)
 node_modules/
 dist/
 .vite/
+.vercel/
 
 # Experiment intermediates
 experiments/results/*.pkl

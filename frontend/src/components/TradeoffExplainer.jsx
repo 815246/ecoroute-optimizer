@@ -12,7 +12,11 @@ export default function TradeoffExplainer({ explanation, tradeoffs }) {
       <div className="card-title">Route Trade-off Analysis</div>
       <div className="explainer">
         {explanation ? (
-          <p style={{ whiteSpace: "pre-line" }}>{explanation}</p>
+          <p style={{ whiteSpace: "pre-line" }}>
+            {typeof explanation === "object"
+              ? explanation.summary || explanation.text || JSON.stringify(explanation)
+              : String(explanation)}
+          </p>
         ) : (
           <p>Select a route to see trade-off details.</p>
         )}
@@ -21,7 +25,9 @@ export default function TradeoffExplainer({ explanation, tradeoffs }) {
           <ul style={{ marginTop: "0.5rem", paddingLeft: "1rem" }}>
             {tradeoffs.map((t, i) => (
               <li key={i} style={{ marginTop: "0.2rem" }}>
-                {t}
+                {typeof t === "object"
+                  ? t.note || (t.route ? `${t.route}: ${t.co2_kg} kg CO₂ in ${t.time_min} min` : JSON.stringify(t))
+                  : String(t)}
               </li>
             ))}
           </ul>

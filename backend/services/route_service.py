@@ -11,7 +11,7 @@ from typing import Any
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
-from database.models import Journey, OptimizationResult, Route
+from database.models import Journey, OptimizationResult, Route, TrafficSnapshot
 
 
 class RouteService:
@@ -116,19 +116,64 @@ class RouteService:
         user_id: int | None = None,
         limit: int = 20,
     ) -> list[dict[str, Any]]:
-        """Return list of recent journeys."""
+        """Return list of recent journeys with route summary metrics."""
         stmt = select(Journey).order_by(desc(Journey.created_at)).limit(limit)
         if user_id is not None:
             stmt = stmt.where(Journey.user_id == user_id)
 
         journeys = db.execute(stmt).scalars().all()
-        return [
-            {
-                "journey_id": j.id,
-                "source": j.source,
-                "destination": j.destination,
-                "data_mode": j.data_mode,
-                "created_at": j.created_at.isoformat() if j.created_at else None,
-            }
-            for j in journeys
-        ]
+        result = []
+        for j in journeys:
+            # Fetch primary/recommended route if available
+            top_route = None
+            if j.routes:
+                top_route = min(j.routes, key=lambda r: r.optimization_score or 999.0)
+            result.append(
+                {
+                    "journey_id": j.id,
+                    "source": j.source,
+                    "destination": j.destination,
+                    "data_mode": j.data_mode,
+                    "created_at": j.created_at.isoformat() if j.created_at else None,
+                    "routes_count": len(j.routes) if j.routes else 0,
+                    "recommended_route_name": top_route.route_name if top_route else None,
+                    "distance_km": top_route.distance_km if top_route else None,
+                    "travel_time_min": top_route.travel_time_min if top_route else None,
+                    "co2_kg": top_route.co2_kg if top_route else None,
+                }
+            )
+        return result
+
+    def delete_journey(self, db: Session, journey_id: int) -> bool:
+        """Delete a journey and all associated routes and optimization records."""
+        stmt = select(Journey).where(Journey.id == journey_id)
+        journey = db.execute(stmt).scalar_one_or_none()
+        if not journey:
+            return False
+
+        # Delete dependent optimization results and routes
+        route_stmt = select(Route).where(Route.journey_id == journey_id)
+        routes = db.execute(route_stmt).scalars().all()
+        for r in routes:
+            opt_stmt = select(OptimizationResult).where(OptimizationResult.route_id == r.id)
+            for opt in db.execute(opt_stmt).scalars().all():
+                db.delete(opt)
+            db.delete(r)
+
+        # Delete traffic snapshots
+        snap_stmt = select(TrafficSnapshot).where(TrafficSnapshot.journey_id == journey_id)
+        for snap in db.execute(snap_stmt).scalars().all():
+            db.delete(snap)
+
+        db.delete(journey)
+        db.commit()
+        return True
+
+    def clear_history(self, db: Session) -> int:
+        """Delete all saved journeys and return deleted count."""
+        stmt = select(Journey)
+        journeys = db.execute(stmt).scalars().all()
+        count = len(journeys)
+        for j in journeys:
+            self.delete_journey(db, j.id)
+        return count

@@ -102,13 +102,46 @@ export async function getJourney(journeyId) {
 }
 
 /** Fetch journey history. */
-export async function getHistory(limit = 20) {
+export async function getHistory(limit = 50) {
   try {
     const { data } = await client.get("/history", { params: { limit } });
     const journeys = Array.isArray(data) ? data : data.journeys ?? [];
     return { journeys };
   } catch {
     return { journeys: [] };
+  }
+}
+
+/** Delete a single journey from history. */
+export async function deleteJourney(journeyId) {
+  const { data } = await client.delete(`/history/${journeyId}`);
+  return data;
+}
+
+/** Clear all journeys from history. */
+export async function clearHistory() {
+  const { data } = await client.delete("/history");
+  return data;
+}
+
+/** Trigger smart replanning under simulated traffic/incidents. */
+export async function replanRoute(payload) {
+  const { data } = await client.post("/routes/replan", payload);
+  return data;
+}
+
+/** Fetch aggregated platform analytics. */
+export async function getAnalytics() {
+  try {
+    const { data } = await client.get("/analytics");
+    return data;
+  } catch {
+    return {
+      total_journeys_planned: 0,
+      total_routes_evaluated: 0,
+      total_simulated_distance_km: 0,
+      total_estimated_emissions_kg: 0,
+    };
   }
 }
 

@@ -232,9 +232,9 @@ function RouteCard({
                     <div style={{ fontWeight: 600, color: "var(--slate-800)" }}>
                       {step.instruction}
                     </div>
-                    {step.distance_km > 0 && (
+                    {(step.distance_km != null || step.dist_km != null || step.time_min != null || step.duration_min != null) && (
                       <div style={{ fontSize: "0.65rem", color: "var(--slate-500)", marginTop: "1px" }}>
-                        Distance: {step.distance_km.toFixed(2)} km · ~{step.time_min.toFixed(1)} min
+                        Distance: {Number(step.distance_km ?? step.dist_km ?? 0).toFixed(2)} km · ~{Number(step.time_min ?? step.duration_min ?? 0).toFixed(1)} min
                       </div>
                     )}
                   </div>

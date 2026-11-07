@@ -136,3 +136,49 @@ def test_api_simulation_traffic(client: TestClient) -> None:
     sim_data = sim_resp.json()
     assert sim_data["traffic_label"] == "Simulated traffic, not live"
     assert "time_of_day" in sim_data
+
+
+def test_api_history_deletion(client: TestClient) -> None:
+    """Verify DELETE /api/history/{id} and DELETE /api/history."""
+    # 1. Plan a route to populate history
+    payload = {
+        "source": "A",
+        "destination": "E",
+        "vehicle": "petrol_hatchback",
+        "weights": "eco",
+        "persist": True,
+    }
+    plan_resp = client.post("/api/routes/plan", json=payload)
+    assert plan_resp.status_code == 200
+    j_id = plan_resp.json()["journey_id"]
+
+    # 2. Check journey is in history
+    hist_resp = client.get("/api/history")
+    assert hist_resp.status_code == 200
+    ids = [j["journey_id"] for j in hist_resp.json()]
+    assert j_id in ids
+
+    # 3. Delete single journey
+    del_resp = client.delete(f"/api/history/{j_id}")
+    assert del_resp.status_code == 200
+    assert del_resp.json()["status"] == "success"
+
+    # 4. Clear all history
+    clear_resp = client.delete("/api/history")
+    assert clear_resp.status_code == 200
+    assert clear_resp.json()["status"] == "success"
+
+
+def test_coordinator_custom_weights_and_delivery_van() -> None:
+    """Verify custom normalized weights and diesel delivery van calculation."""
+    coordinator = Coordinator()
+    req = {
+        "source": "A",
+        "destination": "E",
+        "vehicle": "diesel_delivery_van",
+        "weights": {"time": 0.4, "distance": 0.2, "resource": 0.2, "emissions": 0.2},
+    }
+    res = coordinator.optimize(req)
+    assert res["status"] == "success"
+    assert res["vehicle"]["name"] == "Diesel Delivery Van"
+    assert res["recommended_route"]["co2_kg"] > 0.0

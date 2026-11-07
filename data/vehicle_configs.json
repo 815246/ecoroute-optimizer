@@ -2,30 +2,49 @@
   "_comment": "Default vehicle configurations for EcoRoute Optimizer. Load factor multiplies consumption (1.0 = base unladen/standard load).",
   "petrol_hatchback": {
     "type": "petrol",
-    "name": "Petrol Hatchback (e.g. Maruti Swift)",
+    "name": "Petrol Hatchback",
     "fuel_type": "petrol",
     "fuel_efficiency_kmpl": 20.0,
     "fuel_price_per_litre": 102.0,
     "load_factor": 1.0,
-    "notes": "ARAI-certified test cycle. Real-world urban driving is typically 15-20% lower."
+    "notes": "Standard hatchback profile. Real-world urban driving is typically 15-20% lower than certified cycles."
   },
   "diesel_suv": {
     "type": "diesel",
-    "name": "Diesel SUV (e.g. Mahindra Scorpio)",
+    "name": "Diesel SUV",
     "fuel_type": "diesel",
-    "fuel_efficiency_kmpl": 15.0,
+    "fuel_efficiency_kmpl": 14.5,
     "fuel_price_per_litre": 90.0,
     "load_factor": 1.0,
-    "notes": "ARAI-certified. Diesel has higher tailpipe CO2 per litre (2.68 vs 2.31 kg/L) but higher volumetric fuel economy."
+    "notes": "Mid-to-large diesel SUV. Diesel has higher volumetric carbon content (2.68 kg CO2/L vs 2.31 for petrol)."
   },
-  "electric_sedan": {
+  "electric_car": {
     "type": "electric",
-    "name": "Electric Sedan (e.g. Tata Nexon EV)",
+    "name": "Electric Car",
     "energy_rate_kwh_per_100km": 15.0,
     "battery_capacity_kwh": 40.5,
     "battery_soc": 80.0,
     "electricity_price_per_kwh": 8.0,
     "grid_factor_override": null,
-    "notes": "Energy consumption rate from ARAI/manufacturer spec. SoC 80% represents typical daily departure charge."
+    "notes": "Compact/sedan EV. Zero tailpipe emissions; lifecycle CO2 based on national grid average (0.82 kg CO2/kWh)."
+  },
+  "electric_sedan": {
+    "type": "electric",
+    "name": "Electric Sedan",
+    "energy_rate_kwh_per_100km": 15.0,
+    "battery_capacity_kwh": 40.5,
+    "battery_soc": 80.0,
+    "electricity_price_per_kwh": 8.0,
+    "grid_factor_override": null,
+    "notes": "Compact/sedan EV alias."
+  },
+  "diesel_delivery_van": {
+    "type": "diesel",
+    "name": "Diesel Delivery Van",
+    "fuel_type": "diesel",
+    "fuel_efficiency_kmpl": 11.5,
+    "fuel_price_per_litre": 90.0,
+    "load_factor": 1.25,
+    "notes": "Light commercial vehicle with freight/payload load factor (1.25)."
   }
 }

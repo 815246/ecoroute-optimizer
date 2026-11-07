@@ -406,10 +406,29 @@ body {
 }
 
 @media (max-width: 800px) {
+  .top-nav {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.6rem 1rem;
+    gap: 0.5rem;
+  }
+  .top-nav .nav-links {
+    margin-left: 0;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    gap: 0.4rem;
+  }
   .main-content {
     grid-template-columns: 1fr;
   }
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--slate-200);
+    max-height: 50vh;
+  }
   .map-panel {
-    min-height: 300px;
+    min-height: 350px;
+    height: 350px;
   }
 }
