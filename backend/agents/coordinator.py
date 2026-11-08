@@ -50,6 +50,10 @@ class Coordinator:
             from agents.road_network_agent import RoadNetworkAgent
 
             self.road_agent = RoadNetworkAgent()
+        self.road_agent = getattr(self.graph_service, "road_agent", None)
+        if self.road_agent is None:
+            from agents.road_network_agent import RoadNetworkAgent
+            self.road_agent = RoadNetworkAgent()
         self.traffic_agent = traffic_agent or TrafficAgent()
         self.route_search_agent = route_search_agent or RouteSearchAgent()
         self.emission_agent = emission_agent or EmissionAgent()
