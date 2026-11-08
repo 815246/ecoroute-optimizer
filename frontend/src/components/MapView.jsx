@@ -110,19 +110,21 @@ function MapClickHandler({ onMapClick }) {
   return null;
 }
 
-// Automatically fit map view to the selected route path
-function RouteBoundsFitter({ activePolyline }) {
+// Keep the map focused on the route or the currently selected locations.
+function RouteBoundsFitter({ activePolyline, startPoint, endPoint }) {
   const map = useMap();
   useEffect(() => {
-    if (activePolyline && activePolyline.length > 1) {
-      try {
-        const bounds = L.latLngBounds(activePolyline);
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-      } catch (e) {
-        // Ignore boundary calculation errors
-      }
+    const points =
+      activePolyline?.length > 1
+        ? activePolyline
+        : [startPoint, endPoint].filter(Boolean);
+
+    if (points.length > 1) {
+      map.fitBounds(L.latLngBounds(points), { padding: [50, 50], maxZoom: 15 });
+    } else if (points.length === 1) {
+      map.setView(points[0], 14);
     }
-  }, [activePolyline, map]);
+  }, [activePolyline, startPoint, endPoint, map]);
   return null;
 }
 
@@ -211,7 +213,11 @@ export default function MapView({
         />
 
         <MapClickHandler onMapClick={onMapClick} />
-        <RouteBoundsFitter activePolyline={selectedPolyline} />
+        <RouteBoundsFitter
+          activePolyline={selectedPolyline}
+          startPoint={startPoint}
+          endPoint={endPoint}
+        />
 
         {/* Selected Start Point Marker */}
         {startPoint && (

@@ -17,11 +17,7 @@ export default function LocationSearchInput({
 
   // Sync display label when changed externally (e.g. from map click)
   useEffect(() => {
-    if (displayLabel) {
-      setQuery(displayLabel);
-    } else if (value) {
-      setQuery(value);
-    }
+    setQuery(displayLabel || value || "");
   }, [displayLabel, value]);
 
   // Click outside listener to close dropdown
@@ -100,9 +96,6 @@ export default function LocationSearchInput({
         lon: item.lon,
         name: item.title,
       });
-    }
-    if (onChange) {
-      onChange(item.coordStr);
     }
   };
 
@@ -251,4 +244,3 @@ export default function LocationSearchInput({
     </div>
   );
 }
-

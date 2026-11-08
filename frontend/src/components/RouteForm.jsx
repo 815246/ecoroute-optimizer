@@ -12,16 +12,19 @@ export default function RouteForm({
   loading,
   sourceCoord,
   destCoord,
+  onStartPointChange,
+  onEndPointChange,
+  onLocationNamesChange,
   activeMapTarget,
   setActiveMapTarget,
   onSwapCoords,
 }) {
   // Origin & Destination names + coordinates
-  const [sourceName, setSourceName] = useState("Birsa Munda Airport, Ranchi");
-  const [sourceCoords, setSourceCoords] = useState("23.3144, 85.3216");
+  const [sourceName, setSourceName] = useState("");
+  const [sourceCoords, setSourceCoords] = useState("");
 
-  const [destName, setDestName] = useState("Ranchi Railway Station");
-  const [destCoords, setDestCoords] = useState("23.3486, 85.3341");
+  const [destName, setDestName] = useState("");
+  const [destCoords, setDestCoords] = useState("");
 
   const [vehicleId, setVehicleId] = useState("petrol_hatchback");
   const [preset, setPreset] = useState("eco");
@@ -41,12 +44,14 @@ export default function RouteForm({
   // Reverse geocode when clicked on the map so a real location name appears
   useEffect(() => {
     if (!sourceCoord) return;
+    let cancelled = false;
     const [lat, lon] = sourceCoord;
     setSourceCoords(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
 
     fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`)
       .then((res) => res.json())
       .then((data) => {
+        if (cancelled) return;
         const p = data.features?.[0]?.properties || {};
         const nameParts = [p.name || p.street, p.district || p.locality, p.city].filter(
           Boolean
@@ -55,18 +60,23 @@ export default function RouteForm({
         setSourceName(resolvedName || "Selected Map Location");
       })
       .catch(() => {
-        setSourceName("Selected Map Location");
+        if (!cancelled) setSourceName("Selected Map Location");
       });
+    return () => {
+      cancelled = true;
+    };
   }, [sourceCoord]);
 
   useEffect(() => {
     if (!destCoord) return;
+    let cancelled = false;
     const [lat, lon] = destCoord;
     setDestCoords(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
 
     fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}`)
       .then((res) => res.json())
       .then((data) => {
+        if (cancelled) return;
         const p = data.features?.[0]?.properties || {};
         const nameParts = [p.name || p.street, p.district || p.locality, p.city].filter(
           Boolean
@@ -75,9 +85,16 @@ export default function RouteForm({
         setDestName(resolvedName || "Selected Destination");
       })
       .catch(() => {
-        setDestName("Selected Destination");
+        if (!cancelled) setDestName("Selected Destination");
       });
+    return () => {
+      cancelled = true;
+    };
   }, [destCoord]);
+
+  useEffect(() => {
+    onLocationNamesChange?.({ sourceName, destName });
+  }, [sourceName, destName, onLocationNamesChange]);
 
   useEffect(() => {
     getVehicles()
@@ -86,10 +103,10 @@ export default function RouteForm({
         setVehicles(vs);
         if (vs.length > 0) setVehicleId(vs[0].id);
       })
-      .catch(() => {});
+      .catch(() => { });
     getPresets()
       .then((d) => setPresets(d.presets ?? []))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleSwap = () => {
@@ -176,11 +193,18 @@ export default function RouteForm({
           <div style={{ flex: 1 }}>
             <LocationSearchInput
               label="From (Origin)"
-              displayValue={sourceName}
+              value={sourceCoords}
+              displayLabel={sourceName}
               placeholder="Search airport, station, landmark, or street..."
-              onSelectLocation={(item) => {
+              onChange={(query) => {
+                setSourceName(query);
+                setSourceCoords("");
+                onStartPointChange?.(null);
+              }}
+              onSelectCoordinate={(item) => {
                 setSourceName(item.name);
                 setSourceCoords(item.coordStr);
+                onStartPointChange?.([item.lat, item.lon]);
               }}
             />
           </div>
@@ -238,11 +262,18 @@ export default function RouteForm({
           <div style={{ flex: 1 }}>
             <LocationSearchInput
               label="To (Destination)"
-              displayValue={destName}
+              value={destCoords}
+              displayLabel={destName}
               placeholder="Search destination landmark, street, or city..."
-              onSelectLocation={(item) => {
+              onChange={(query) => {
+                setDestName(query);
+                setDestCoords("");
+                onEndPointChange?.(null);
+              }}
+              onSelectCoordinate={(item) => {
                 setDestName(item.name);
                 setDestCoords(item.coordStr);
+                onEndPointChange?.([item.lat, item.lon]);
               }}
             />
           </div>

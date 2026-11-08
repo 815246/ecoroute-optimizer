@@ -43,16 +43,16 @@ export default function App() {
 
   // Human-readable trip location names
   const [tripNames, setTripNames] = useState({
-    sourceName: "Birsa Munda Airport, Ranchi",
-    destName: "Ranchi Railway Station",
+    sourceName: "",
+    destName: "",
   });
 
   // Hovered direction step location on map
   const [hoveredStepLocation, setHoveredStepLocation] = useState(null);
 
   // Map click & coordinates state
-  const [startPoint, setStartPoint] = useState([23.3144, 85.3216]); // Ranchi Airport
-  const [endPoint, setEndPoint] = useState([23.3486, 85.3341]); // Ranchi Railway Station
+  const [startPoint, setStartPoint] = useState(null);
+  const [endPoint, setEndPoint] = useState(null);
   const [activeMapTarget, setActiveMapTarget] = useState("start"); // "start" | "end"
 
   // Active vehicle & preset state for replanning
@@ -207,6 +207,9 @@ export default function App() {
                 loading={loading}
                 sourceCoord={startPoint}
                 destCoord={endPoint}
+                onStartPointChange={setStartPoint}
+                onEndPointChange={setEndPoint}
+                onLocationNamesChange={setTripNames}
                 activeMapTarget={activeMapTarget}
                 setActiveMapTarget={setActiveMapTarget}
                 onSwapCoords={handleSwapCoords}
